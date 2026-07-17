@@ -1,0 +1,44 @@
+apiVersion: ai.sap.com/v1alpha1
+kind: ServingTemplate
+metadata:
+  name: qwen3-tts-serving
+  annotations:
+    scenarios.ai.sap.com/id: "qwen3-tts-pipeline"
+    scenarios.ai.sap.com/name: "Qwen3 TTS Custom Voice Generation"
+spec:
+  inputs:
+    parameters: []
+  template:
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        "ai.sap.com/scenario" : "qwen3-tts-pipeline"
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          "ai.sap.com/scenario" : "qwen3-tts-pipeline"
+      template:
+        metadata:
+          labels:
+            "ai.sap.com/scenario" : "qwen3-tts-pipeline"
+            # Adjust the resource plan string based on your specific global region's naming convention
+            "ai.sap.com/resourcePlan": "infer.l" 
+        spec:
+          containers:
+            - name: qwen-container
+              image: "YOUR_DOCKER_REGISTRY_PATH/qwen3-tts:latest" # Change to your actual pushed registry image
+              imagePullPolicy: Always
+              ports:
+                - containerPort: 8080
+              resources:
+                limits:
+                  nvidia.com/gpu: "1"
+                  memory: "24Gi"
+                  cpu: "4"
+                requests:
+                  nvidia.com/gpu: "1"
+                  memory: "16Gi"
+                  cpu: "2"
+                  
