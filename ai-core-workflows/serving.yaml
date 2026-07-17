@@ -28,7 +28,7 @@ spec:
         spec:
           containers:
             - name: qwen-container
-              image: "YOUR_DOCKER_REGISTRY_PATH/qwen3-tts:latest" # Change to your actual pushed registry image
+              image: "docker.io/jeremee02/qwen3-tts:latest" # Change to your actual pushed registry image
               imagePullPolicy: Always
               ports:
                 - containerPort: 8080
@@ -41,4 +41,3 @@ spec:
                   nvidia.com/gpu: "1"
                   memory: "16Gi"
                   cpu: "2"
-                  

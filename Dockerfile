@@ -1,26 +1,21 @@
-# Utilizing an optimized NVIDIA PyTorch base image containing Python 3.12 capabilities
-FROM nvcr.io/nvidia/pytorch:24.03-py3
+# Use a standard PyTorch base image
+FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-devel
 
 WORKDIR /app
 
-# Install system dependencies required for processing audio files
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install standard application dependencies
-RUN pip install --no-cache-dir fastapi uvicorn pydantic soundfile
+# Install standard dependencies
+RUN pip install --no-cache-dir fastapi uvicorn pydantic soundfile qwen-tts
 
-# Install the primary qwen-tts module
-RUN pip install -U qwen-tts
+# Directly install the pre-compiled flash-attn wheel to prevent source building
+RUN pip install --no-cache-dir https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.8/flash_attn-2.5.8+cu122torch2.3cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
 
-# Build FlashAttention 2 without isolation to fit GPU architecture
-RUN pip install -U flash-attn --no-build-isolation
-
-# Copy application script
 COPY app.py /app/app.py
 
-# Expose target port for SAP AI Core tracking routing
 EXPOSE 8080
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
