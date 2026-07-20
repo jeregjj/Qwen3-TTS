@@ -5,36 +5,31 @@ metadata:
   annotations:
     scenarios.ai.sap.com/id: "qwen3-tts-pipeline"
     scenarios.ai.sap.com/name: "Qwen3 TTS Custom Voice Generation"
-    executables.ai.sap.com/name: "qwen3-tts-serving"
-    executables.ai.sap.com/description: "Serve Qwen3 TTS model via FastAPI"
-  labels:
-    scenarios.ai.sap.com/id: "qwen3-tts-pipeline"
-    ai.sap.com/version: "1.0.0"
 spec:
   inputs:
     parameters: []
   template:
     apiVersion: "serving.kserve.io/v1beta1"
     metadata:
-      labels:
-        "ai.sap.com/resourcePlan": "infer.l" 
+      labels: |
+        ai.sap.com/resourcePlan: "infer.l" 
     spec: |
       predictor:
         minReplicas: 1
         maxReplicas: 1
         containers:
-        - name: kserve-container
-          image: "docker.io/jeremee02/qwen3-tts:latest"
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 8080
-              protocol: TCP
-          resources:
-            limits:
-              nvidia.com/gpu: "1"
-              memory: "24Gi"
-              cpu: "4"
-            requests:
-              nvidia.com/gpu: "1"
-              memory: "16Gi"
-              cpu: "2"
+          - name: kserve-container
+            image: "docker.io/jeremee02/qwen3-tts:latest" 
+            imagePullPolicy: Always
+            ports:
+              - containerPort: 8080
+                protocol: TCP
+            resources:
+              limits:
+                nvidia.com/gpu: "1"
+                memory: "24Gi"
+                cpu: "4"
+              requests:
+                nvidia.com/gpu: "1"
+                memory: "16Gi"
+                cpu: "2"
