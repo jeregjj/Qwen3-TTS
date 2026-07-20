@@ -2,13 +2,14 @@ apiVersion: ai.sap.com/v1alpha1
 kind: ServingTemplate
 metadata:
   name: qwen3-tts-serving
-annotations:
+  annotations:
     scenarios.ai.sap.com/id: "qwen3-tts-pipeline"
     scenarios.ai.sap.com/name: "Qwen3 TTS Custom Voice Generation"
     executables.ai.sap.com/name: "qwen3-tts-serving"
     executables.ai.sap.com/description: "Serve Qwen3 TTS model via FastAPI"
   labels:
     scenarios.ai.sap.com/id: "qwen3-tts-pipeline"
+    executables.ai.sap.com/id: "qwen3-tts-serving"
     ai.sap.com/version: "1.0.0" 
 spec:
   inputs:
@@ -20,6 +21,8 @@ spec:
         ai.sap.com/resourcePlan: "infer.l" 
     spec: |
       predictor:
+        imagePullSecrets:
+          - name: qwen3-tts
         minReplicas: 1
         maxReplicas: 1
         containers:
