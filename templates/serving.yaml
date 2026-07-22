@@ -32,6 +32,9 @@ spec:
             ports:
               - containerPort: 8080
                 protocol: TCP
+            env:
+              - name: NUMBA_CACHE_DIR
+                value: "/tmp"
             resources:
               limits:
                 nvidia.com/gpu: "1"
