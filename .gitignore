@@ -1,24 +1,31 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.idea/
-.vscode/
+# Virtual environment
 venv/
-env/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Audio files
+*.wav
+*.mp3
+
+# macOS
+.DS_Store
+
+# Environment variables
+.env
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+planning/
+
+# Model cache
+model_cache/
+
+# Logs
+*.log

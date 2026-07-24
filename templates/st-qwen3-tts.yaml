@@ -1,0 +1,81 @@
+apiVersion: ai.sap.com/v1alpha1
+kind: ServingTemplate
+metadata:
+  name: qwen3-tts-I772784
+  annotations:
+    scenarios.ai.sap.com/description: "Qwen3-TTS Text-to-Speech Model Serving"
+    scenarios.ai.sap.com/name: "scenario_qwen3_tts-I772784"
+    executables.ai.sap.com/description: "Qwen3-TTS inference server"
+    executables.ai.sap.com/name: "st-qwen3-tts-I772784"
+  labels:
+    scenarios.ai.sap.com/id: "scenario-qwen3-tts-I772784"
+    executables.ai.sap.com/id: "qwen3-tts-I772784"
+    ai.sap.com/version: "1.0.0"
+spec:
+  inputs:
+    parameters: []
+  template:
+    apiVersion: serving.kserve.io/v1beta1
+    metadata:
+      annotations:
+        autoscaling.knative.dev/metric: concurrency
+        autoscaling.knative.dev/target: "1"
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
+      labels:
+        ai.sap.com/resourcePlan: infer.s
+    spec:
+      predictor:
+        minReplicas: 1
+        maxReplicas: 1
+        containers:
+          - name: kserve-container
+            image: jeremee02/qwen3-tts:0.0.1
+            ports:
+              - containerPort: 9001
+                protocol: TCP
+            env:
+              - name: HF_HOME
+                value: "/mnt/models/.cache"
+              - name: TRANSFORMERS_CACHE
+                value: "/mnt/models/.cache"
+              - name: XDG_CACHE_HOME
+                value: "/mnt/models/.cache"
+              - name: TORCH_HOME
+                value: "/mnt/models/.cache/torch"
+              - name: MODEL_ID
+                value: "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+              - name: CUDA_VISIBLE_DEVICES
+                value: "0"
+            resources:
+              requests:
+                memory: "16Gi"
+                cpu: "4"
+                nvidia.com/gpu: "1"
+              limits:
+                memory: "32Gi"
+                cpu: "8"
+                nvidia.com/gpu: "1"
+            readinessProbe:
+              httpGet:
+                path: /v1/models/tts:health
+                port: 9001
+              initialDelaySeconds: 120
+              periodSeconds: 15
+              timeoutSeconds: 10
+              failureThreshold: 10
+            livenessProbe:
+              httpGet:
+                path: /v1/models/tts:health
+                port: 9001
+              initialDelaySeconds: 180
+              periodSeconds: 30
+              timeoutSeconds: 10
+              failureThreshold: 5
+            volumeMounts:
+              - name: model-cache
+                mountPath: /mnt/models/.cache
+        volumes:
+          - name: model-cache
+            emptyDir:
+              sizeLimit: "50Gi"
