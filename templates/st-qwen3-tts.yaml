@@ -40,6 +40,8 @@ spec:
                 value: "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
               - name: DEVICE
                 value: "cuda:0"
+              - name: NUMBA_CACHE_DIR
+                value: "/tmp"
             resources:
               limits:
                 nvidia.com/gpu: "1"

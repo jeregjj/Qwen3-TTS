@@ -21,6 +21,7 @@ ENV HF_HOME=/mnt/models/.cache \
     HF_DATASETS_CACHE=/mnt/models/.cache/datasets \
     HUGGINGFACE_HUB_CACHE=/mnt/models/.cache/hub \
     TORCH_HOME=/mnt/models/.cache/torch \
+    NUMBA_CACHE_DIR=/tmp \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     MODEL_ID=Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice \
