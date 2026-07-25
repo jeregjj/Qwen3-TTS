@@ -25,7 +25,7 @@ spec:
         maxReplicas: 1
         containers:
           - name: kserve-container
-            image: jeremee02/qwen3-tts:0.0.1
+            image: jeremee02/qwen3-tts:0.0.2
             ports:
               - containerPort: 9001
                 protocol: TCP
@@ -38,6 +38,8 @@ spec:
                 value: "/mnt/models/.cache/torch"
               - name: MODEL_ID
                 value: "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+              - name: DEVICE
+                value: "cuda:0"
             resources:
               limits:
                 nvidia.com/gpu: "1"

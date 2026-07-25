@@ -9,10 +9,11 @@ Werkzeug==3.0.3
 # NOTE: torch and torchaudio are provided by base image (pytorch:2.3.0-cuda12.1)
 # Do NOT install here - would break flash-attn wheel compatibility
 
-# Qwen TTS model package (this pulls in the correct transformers version)
-qwen-tts>=0.1.0
+# NOTE: qwen_tts is a local package copied into the Docker image (not from PyPI)
+# The local package provides Qwen3TTSModel
 
-# Hugging Face ecosystem - let qwen-tts control transformers version
+# Hugging Face ecosystem
+transformers>=4.44.0
 accelerate>=0.33.0
 huggingface-hub>=0.24.5
 

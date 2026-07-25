@@ -35,8 +35,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # This wheel is for CUDA 12.2 + PyTorch 2.3 + Python 3.10
 RUN pip install --no-cache-dir https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.8/flash_attn-2.5.8+cu122torch2.3cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
 
-# Copy application source code
+# Copy application source code and local qwen_tts package
 COPY src/ /app/src/
+COPY qwen_tts/ /app/qwen_tts/
 
 # SAP AI Core permissions (non-root UID compatibility)
 RUN chgrp -R nogroup /app && chmod -R 770 /app && \
