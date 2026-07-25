@@ -25,7 +25,7 @@ spec:
         maxReplicas: 1
         containers:
           - name: kserve-container
-            image: jeremee02/qwen3-tts:0.0.2
+            image: jeremee02/qwen3-tts:0.0.3
             ports:
               - containerPort: 9001
                 protocol: TCP
@@ -41,6 +41,10 @@ spec:
               - name: DEVICE
                 value: "cuda:0"
               - name: NUMBA_CACHE_DIR
+                value: "/tmp"
+              - name: NUMBA_DISABLE_JIT
+                value: "1"
+              - name: MPLCONFIGDIR
                 value: "/tmp"
             resources:
               limits:
