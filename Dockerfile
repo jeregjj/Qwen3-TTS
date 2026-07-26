@@ -1,6 +1,7 @@
 # SAP AI Core compliant Dockerfile for Qwen3-TTS
-# Base: PyTorch 2.3.0 with CUDA 12.1 support for Python 3.10
-FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-devel
+# Base: PyTorch 2.4.1 with CUDA 12.4 support for Python 3.10
+# Note: transformers>=4.44.0 requires PyTorch >= 2.4
+FROM pytorch/pytorch:2.4.1-cuda12.4-cudnn9-devel
 
 WORKDIR /app
 
@@ -10,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     git \
     libsndfile1 \
+    sox \
     && rm -rf /var/lib/apt/lists/*
 
 # Create model cache directory and numba cache directory
@@ -34,8 +36,8 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install pre-compiled flash-attn wheel (avoids 30+ min source build)
-# This wheel is for CUDA 12.2 + PyTorch 2.3 + Python 3.10
-RUN pip install --no-cache-dir https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.8/flash_attn-2.5.8+cu122torch2.3cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+# This wheel is for CUDA 12 + PyTorch 2.4 + Python 3.11
+RUN pip install --no-cache-dir https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3.post1/flash_attn-2.8.3.post1+cu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 
 # Copy application source code and local qwen_tts package
 COPY src/ /app/src/
