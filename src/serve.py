@@ -48,6 +48,88 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
 
 
+def diagnose_hf_cache():
+    """Diagnostic function to check HuggingFace cache state before model loading.
+
+    This runs BEFORE model loading to show what's in the cache.
+    Run again AFTER a failed load to see what got downloaded.
+    """
+    cache_dir = os.environ.get('HF_HOME', '/mnt/models/.cache')
+    logger.info("=" * 60)
+    logger.info("DIAGNOSTIC: HuggingFace Cache Analysis")
+    logger.info(f"HF_HOME: {cache_dir}")
+    logger.info(f"TRANSFORMERS_CACHE: {os.environ.get('TRANSFORMERS_CACHE', 'not set')}")
+    logger.info(f"HUGGINGFACE_HUB_CACHE: {os.environ.get('HUGGINGFACE_HUB_CACHE', 'not set')}")
+    logger.info(f"HF_HOME exists: {os.path.exists(cache_dir)}")
+
+    # Check for model cache directory
+    model_name = "Qwen--Qwen3-TTS-12Hz-1.7B-CustomVoice"
+    model_cache = os.path.join(cache_dir, f'models--{model_name}')
+
+    if not os.path.exists(model_cache):
+        logger.info(f"Model cache does NOT exist at: {model_cache}")
+        logger.info("Model will be downloaded on first load")
+        logger.info("=" * 60)
+        return
+
+    logger.info(f"Model cache exists at: {model_cache}")
+
+    # Find and analyze snapshots
+    snapshots_dir = os.path.join(model_cache, 'snapshots')
+    if not os.path.exists(snapshots_dir):
+        logger.info("  No snapshots directory found")
+        logger.info("=" * 60)
+        return
+
+    for snapshot in os.listdir(snapshots_dir):
+        snapshot_path = os.path.join(snapshots_dir, snapshot)
+        if not os.path.isdir(snapshot_path):
+            continue
+
+        logger.info(f"  Snapshot: {snapshot}")
+
+        # List all top-level files/dirs in snapshot
+        try:
+            items = os.listdir(snapshot_path)
+            logger.info(f"    Top-level items: {items}")
+        except Exception as e:
+            logger.error(f"    Error listing snapshot: {e}")
+            continue
+
+        # Check speech_tokenizer specifically - this is critical
+        speech_tok_dir = os.path.join(snapshot_path, 'speech_tokenizer')
+        if os.path.exists(speech_tok_dir):
+            logger.info(f"    speech_tokenizer/ EXISTS")
+            try:
+                for f in os.listdir(speech_tok_dir):
+                    fpath = os.path.join(speech_tok_dir, f)
+                    if os.path.isfile(fpath):
+                        size = os.path.getsize(fpath)
+                        logger.info(f"      - {f} ({size} bytes)")
+                    else:
+                        logger.info(f"      - {f}/ (directory)")
+            except Exception as e:
+                logger.error(f"    Error listing speech_tokenizer: {e}")
+
+            # Critical check for preprocessor_config.json
+            preproc = os.path.join(speech_tok_dir, 'preprocessor_config.json')
+            if os.path.exists(preproc):
+                logger.info(f"    ✓ preprocessor_config.json EXISTS")
+                # Show contents for debugging
+                try:
+                    with open(preproc, 'r') as f:
+                        content = f.read()
+                    logger.info(f"    Content: {content[:200]}...")
+                except Exception as e:
+                    logger.error(f"    Error reading preprocessor_config.json: {e}")
+            else:
+                logger.warning(f"    ✗ preprocessor_config.json MISSING - THIS IS THE PROBLEM!")
+        else:
+            logger.warning(f"    ✗ speech_tokenizer/ does NOT exist!")
+
+    logger.info("=" * 60)
+
+
 def load_model():
     """Load model at startup."""
     global model, model_load_error
@@ -80,6 +162,9 @@ def load_model():
         logger.error(f"Failed to load model: {e}")
         logger.error(traceback.format_exc())
         model = None
+        # Run diagnostics again after failure to see what was downloaded
+        logger.info("Running post-failure diagnostics...")
+        diagnose_hf_cache()
 
 
 def validate_speaker(speaker: str) -> tuple:
@@ -369,6 +454,9 @@ logger.info(f"Model ID: {MODEL_ID}")
 logger.info(f"Device: {DEVICE}")
 logger.info(f"Port: {PORT}")
 logger.info("=" * 60)
+
+# Run diagnostics before attempting model load
+diagnose_hf_cache()
 
 load_model()
 
