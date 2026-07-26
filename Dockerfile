@@ -39,6 +39,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # This wheel is for CUDA 12 + PyTorch 2.4 + Python 3.11
 RUN pip install --no-cache-dir https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3.post1/flash_attn-2.8.3.post1+cu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 
+# Pre-download the speech_tokenizer files from HuggingFace during build
+# This ensures all files (including preprocessor_config.json) are available at runtime
+RUN python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download('Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice', \
+        allow_patterns=['speech_tokenizer/*'], \
+        cache_dir='/mnt/models/.cache')" && \
+    echo 'Speech tokenizer pre-downloaded successfully' && \
+    find /mnt/models/.cache -name 'speech_tokenizer' -type d -exec ls -la {} \;
+
 # Copy application source code and local qwen_tts package
 COPY src/ /app/src/
 COPY qwen_tts/ /app/qwen_tts/
