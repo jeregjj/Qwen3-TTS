@@ -12,18 +12,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create model cache directory
-RUN mkdir -p /mnt/models/.cache
+# Create model cache directory and numba cache directory
+RUN mkdir -p /mnt/models/.cache /tmp/numba_cache /tmp/matplotlib
 
-# Environment variables for model caching
+# Environment variables for model caching and numba
 ENV HF_HOME=/mnt/models/.cache \
     TRANSFORMERS_CACHE=/mnt/models/.cache/transformers \
     HF_DATASETS_CACHE=/mnt/models/.cache/datasets \
     HUGGINGFACE_HUB_CACHE=/mnt/models/.cache/hub \
     TORCH_HOME=/mnt/models/.cache/torch \
-    NUMBA_CACHE_DIR=/tmp \
-    NUMBA_DISABLE_JIT=1 \
-    MPLCONFIGDIR=/tmp \
+    NUMBA_CACHE_DIR=/tmp/numba_cache \
+    MPLCONFIGDIR=/tmp/matplotlib \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     MODEL_ID=Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice \
@@ -43,8 +42,10 @@ COPY src/ /app/src/
 COPY qwen_tts/ /app/qwen_tts/
 
 # SAP AI Core permissions (non-root UID compatibility)
+# Also set permissions on tmp cache directories for numba/matplotlib
 RUN chgrp -R nogroup /app && chmod -R 770 /app && \
-    chgrp -R nogroup /mnt/models && chmod -R 770 /mnt/models
+    chgrp -R nogroup /mnt/models && chmod -R 770 /mnt/models && \
+    chmod -R 777 /tmp/numba_cache /tmp/matplotlib
 
 # Expose KServe port
 EXPOSE 9001

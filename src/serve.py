@@ -4,10 +4,15 @@ GPU-only deployment with Flash Attention 2
 SAP AI Core compliant
 """
 
+# IMPORTANT: Set numba environment variables BEFORE any imports
+# This prevents librosa/numba caching errors in containerized environments
+import os
+os.environ.setdefault('NUMBA_CACHE_DIR', '/tmp/numba_cache')
+os.environ.setdefault('MPLCONFIGDIR', '/tmp/matplotlib')
+
 import base64
 import io
 import logging
-import os
 import sys
 import traceback
 from datetime import datetime
