@@ -150,7 +150,7 @@ def load_model():
             MODEL_ID,
             device_map=DEVICE,
             dtype=torch.bfloat16,
-            attn_implementation="flash_attention_2",
+            attn_implementation="sdpa",  # Use SDPA instead of flash_attention_2 for older GPUs
         )
 
         logger.info(f"Model loaded successfully on {DEVICE}")
