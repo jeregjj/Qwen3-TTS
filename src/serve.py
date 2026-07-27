@@ -189,16 +189,17 @@ def generate_speech(text: str, speaker: str = "Vivian", language: str = "Auto", 
     outputs = None
 
     try:
-        # Generate audio using Qwen3-TTS
-        spk = speaker
-        audio = model.synthesize(
+        # Generate audio using Qwen3-TTS CustomVoice model
+        # generate_custom_voice returns (List[np.ndarray], sample_rate)
+        wavs, sample_rate = model.generate_custom_voice(
             text=text,
-            speaker=spk,
+            speaker=speaker,
             language=language,
             instruct=instruct if instruct else None,
         )
 
-        sample_rate = 24000  # Qwen3-TTS default sample rate
+        # Get the first (and only) audio sample from the list
+        audio = wavs[0]
 
         # Convert to WAV bytes
         buffer = io.BytesIO()
