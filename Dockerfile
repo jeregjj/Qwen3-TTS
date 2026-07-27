@@ -69,5 +69,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
 # - 1 worker (GPU model is not fork-safe)
 # - 1 thread (PyTorch CUDA not thread-safe for inference)
 # - 300s timeout (TTS generation can be slow for long texts)
-# - preload to load model once before forking (if workers > 1 in future)
-CMD ["gunicorn", "--bind", "0.0.0.0:9001", "--workers", "1", "--threads", "1", "--timeout", "300", "--preload", "src.serve:app"]
+# - NO preload flag: CUDA cannot be re-initialized in forked subprocess
+CMD ["gunicorn", "--bind", "0.0.0.0:9001", "--workers", "1", "--threads", "1", "--timeout", "300", "src.serve:app"]
