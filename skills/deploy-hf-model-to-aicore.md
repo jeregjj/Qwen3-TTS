@@ -452,3 +452,589 @@ Before deploying:
 - [ ] Health endpoint returns 503 when model not loaded
 - [ ] ServingTemplate YAML has correct indentation (6 spaces in spec block)
 - [ ] Resource plan matches your GPU/memory needs
+
+---
+
+# REFERENCE DOCUMENTS
+
+> **INSTRUCTIONS FOR AI MODELS:** The sections below contain detailed reference material. When troubleshooting deployment issues or configuring ServingTemplates, read the relevant section completely. Each reference section is self-contained and can be used independently.
+
+---
+
+## REFERENCE A: ServingTemplate Patterns Guide
+
+> **PURPOSE:** Complete pattern guide for SAP AI Core ServingTemplate YAML configurations.
+> **WHEN TO READ:** When creating or modifying ServingTemplate YAML files.
+> **HOW TO USE:** Copy the templates, replace placeholders (marked with `your-*`), and verify indentation.
+
+### A.1 API Version and Kind
+
+```yaml
+apiVersion: ai.sap.com/v1alpha1
+kind: ServingTemplate
+```
+
+**Pattern**: Always use `ai.sap.com/v1alpha1` for the API version and `ServingTemplate` as the kind.
+
+### A.2 Metadata Structure
+
+#### A.2.1 Basic Metadata
+
+```yaml
+metadata:
+  name: qwen3-tts-I772784  # Unique identifier with user/environment suffix
+```
+
+**Naming Convention**: `<service-name>-<identifier>` where identifier is typically a user ID or environment code.
+
+#### A.2.2 Annotations
+
+```yaml
+annotations:
+  # Scenario-related annotations
+  scenarios.ai.sap.com/id: "scenario-qwen3-tts-I772784"           # Unique scenario ID (kebab-case with suffix)
+  scenarios.ai.sap.com/name: "scenario_qwen3_tts-I772784"         # Scenario name (snake_case with suffix)
+  
+  # Executable-related annotations
+  executables.ai.sap.com/name: "qwen3-tts-I772784"                # Executable name (matches metadata.name)
+  executables.ai.sap.com/description: "Qwen3-TTS Text-to-Speech inference server"  # Human-readable description
+  
+  # Optional: Autoscaling annotations (Knative)
+  autoscaling.knative.dev/metric: concurrency
+  autoscaling.knative.dev/target: 1
+  autoscaling.knative.dev/targetBurstCapacity: 0
+```
+
+#### A.2.3 Labels
+
+```yaml
+labels:
+  scenarios.ai.sap.com/id: "scenario-qwen3-tts-I772784"  # Links to scenario
+  executables.ai.sap.com/id: "qwen3-tts-I772784"          # Links to executable
+  ai.sap.com/version: "1.0.0"                             # Semantic version
+```
+
+### A.3 Spec: Inputs Configuration
+
+#### A.3.1 Parameters
+
+```yaml
+spec:
+  inputs:
+    parameters:
+    - name: minreplicas              # Lowercase, descriptive parameter name
+      default: "1"                   # Default value as string
+      type: string                   # Always "string" type
+```
+
+**Parameter Usage**: Reference in template via `{{inputs.parameters.minreplicas}}`
+
+#### A.3.2 Artifacts
+
+```yaml
+    artifacts:
+    - name: modeluri                 # Lowercase artifact name
+```
+
+**Artifact Usage**: Reference in template via `{{inputs.artifacts.modeluri}}`
+
+### A.4 Template Specification (KServe InferenceService)
+
+#### A.4.1 Template Metadata with Literal Blocks
+
+```yaml
+template:
+  apiVersion: "serving.kserve.io/v1beta1"
+  metadata:
+    # Labels - uses YAML pipe literal block (6-space indent required)
+    labels: |
+      ai.sap.com/resourcePlan: infer.l
+    
+    # Annotations - uses YAML pipe literal block (6-space indent required)
+    annotations: |
+      autoscaling.knative.dev/metric: concurrency
+      autoscaling.knative.dev/target: 1
+      autoscaling.knative.dev/targetBurstCapacity: 0
+```
+
+**CRITICAL INDENTATION RULE**: Inside the `|` literal block, content must be indented by **exactly 6 spaces** from the pipe character.
+
+#### A.4.2 Resource Plan Options
+
+| Plan | GPU | Memory | Use Case |
+|------|-----|--------|----------|
+| `infer.l` | 1x V100 | 32Gi | Large GPU models |
+| `infer.s` | None | 8Gi | Small CPU models |
+| `starter` | None | 4Gi | Development/demos |
+
+### A.5 Spec Block with Predictor (Literal Block)
+
+```yaml
+  spec: |
+    predictor:
+      # Image Pull Secrets (optional, for private registries)
+      imagePullSecrets:
+      - name: docker-reg-creds-i343697
+      
+      # Replica Configuration
+      minReplicas: 1
+      maxReplicas: 2
+      
+      # Container Configuration
+      containers:
+      - name: kserve-container
+        image: your-registry/your-image:tag
+        
+        # Port Configuration
+        ports:
+        - containerPort: 9001
+          protocol: TCP
+        
+        # Environment Variables
+        env:
+        - name: HF_HOME
+          value: "/mnt/models/.cache"
+        - name: MODEL_ID
+          value: "your-org/your-model"
+        - name: DEVICE
+          value: "cuda:0"
+        
+        # Resource Requests and Limits
+        resources:
+          requests:
+            cpu: "4"
+            memory: "16Gi"
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "8"
+            memory: "32Gi"
+            nvidia.com/gpu: "1"
+```
+
+**CRITICAL**: Everything under `spec: |` must be indented by **exactly 6 spaces**.
+
+### A.6 GPU Resource Configuration
+
+```yaml
+resources:
+  requests:
+    nvidia.com/gpu: "1"    # Request 1 GPU
+  limits:
+    nvidia.com/gpu: "1"    # Limit to 1 GPU
+```
+
+**Key Points**:
+- Resource key: `nvidia.com/gpu` (not `nvidia/gpu`)
+- Value: string representation of count (e.g., `"1"`)
+- Always include both requests and limits
+
+### A.7 Environment Variables Reference
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `HF_HOME` | `/mnt/models/.cache` | HuggingFace cache directory |
+| `TRANSFORMERS_CACHE` | `/mnt/models/.cache` | Transformers cache |
+| `TORCH_HOME` | `/mnt/models/.cache/torch` | PyTorch cache |
+| `MODEL_ID` | `org/model-name` | HuggingFace model identifier |
+| `DEVICE` | `cuda:0` | GPU device index |
+| `NUMBA_CACHE_DIR` | `/tmp` | Numba JIT cache |
+| `MPLCONFIGDIR` | `/tmp` | Matplotlib config |
+
+### A.8 Image Registry Patterns
+
+**Public Registry**:
+```yaml
+image: dockerhub-user/image-name:tag
+```
+
+**SAP Internal Registry**:
+```yaml
+image: aibus-dev.common.repositories.cloud.sap/<I_NUMBER>/image-name:tag
+```
+
+**With Image Pull Secrets** (for private registries):
+```yaml
+imagePullSecrets:
+- name: docker-reg-creds-i343697
+```
+
+### A.9 Template Substitution Syntax
+
+| Type | Syntax | Example |
+|------|--------|---------|
+| Parameter | `{{inputs.parameters.<name>}}` | `{{inputs.parameters.minreplicas}}` |
+| Artifact | `{{inputs.artifacts.<name>}}` | `{{inputs.artifacts.modeluri}}` |
+
+### A.10 Complete ServingTemplate Example
+
+```yaml
+apiVersion: ai.sap.com/v1alpha1
+kind: ServingTemplate
+metadata:
+  name: your-model-I772784
+  annotations:
+    scenarios.ai.sap.com/id: "scenario-your-model-I772784"
+    scenarios.ai.sap.com/name: "scenario_your_model-I772784"
+    executables.ai.sap.com/name: "your-model-I772784"
+    executables.ai.sap.com/description: "Your model inference server"
+  labels:
+    scenarios.ai.sap.com/id: "scenario-your-model-I772784"
+    executables.ai.sap.com/id: "your-model-I772784"
+    ai.sap.com/version: "1.0.0"
+spec:
+  inputs:
+    parameters: []
+  template:
+    apiVersion: "serving.kserve.io/v1beta1"
+    metadata:
+      labels: |
+        ai.sap.com/resourcePlan: infer.l
+    spec: |
+      predictor:
+        minReplicas: 1
+        maxReplicas: 1
+        containers:
+          - name: kserve-container
+            image: your-registry/your-image:tag
+            ports:
+              - containerPort: 9001
+                protocol: TCP
+            env:
+              - name: HF_HOME
+                value: "/mnt/models/.cache"
+              - name: MODEL_ID
+                value: "your-org/your-model"
+              - name: DEVICE
+                value: "cuda:0"
+            resources:
+              limits:
+                nvidia.com/gpu: "1"
+                memory: "32Gi"
+                cpu: "8"
+              requests:
+                nvidia.com/gpu: "1"
+                memory: "16Gi"
+                cpu: "4"
+```
+
+### A.11 ServingTemplate Checklist
+
+- [ ] Use `apiVersion: ai.sap.com/v1alpha1` and `kind: ServingTemplate`
+- [ ] Set unique `metadata.name` with user/environment suffix
+- [ ] Include `scenarios.ai.sap.com/id` and `scenarios.ai.sap.com/name` annotations
+- [ ] Include `executables.ai.sap.com/name` and `executables.ai.sap.com/description` annotations
+- [ ] Set matching labels for scenarios and executables
+- [ ] Add `ai.sap.com/version` label with semantic version
+- [ ] Set `template.apiVersion` to `serving.kserve.io/v1beta1`
+- [ ] Use resource plan label (`infer.l`, `infer.s`, or `starter`)
+- [ ] Set container port to 9001 with TCP protocol
+- [ ] Specify GPU resources with `nvidia.com/gpu` key
+- [ ] **Verify 6-space indentation inside literal blocks (`|`)**
+
+---
+
+## REFERENCE B: Troubleshooting Guide
+
+> **PURPOSE:** Detailed troubleshooting for all known deployment errors.
+> **WHEN TO READ:** When deployment fails or inference returns errors.
+> **HOW TO USE:** Find your error message in the table below, then read the corresponding section for the fix.
+
+### B.0 Quick Error Lookup Table
+
+| Error Message | Section | Quick Fix |
+|---------------|---------|-----------|
+| `name 'torch' is not defined` | B.1 | Pin `transformers<5.0.0` |
+| `Can't find 'preprocessor_config.json'` | B.2 | Pre-download with `snapshot_download()` |
+| `no match for platform` | B.3 | Build with `--platform linux/amd64` |
+| `has no attribute 'synthesize'` | B.4 | Use `generate_custom_voice()` |
+| `Cannot re-initialize CUDA` | B.5 | Remove `--preload` from gunicorn |
+| `FlashAttention only supports Ampere` | B.6 | Use `attn_implementation="sdpa"` |
+| Health returns 503 | B.7 | Check deployment logs |
+
+---
+
+### B.1 PyTorch/Transformers Version Incompatibility
+
+#### Symptoms
+
+```
+RuntimeError: name 'torch' is not defined
+ImportError: cannot import name 'torch' from transformers
+AttributeError: module 'transformers' has no attribute 'PreTrainedModel'
+```
+
+#### Root Cause
+
+**transformers 5.x dropped support for PyTorch 2.3.x and 2.4.x**, requiring PyTorch 2.5.0+. The base Docker image uses PyTorch 2.4.1, causing version mismatch.
+
+#### Fix
+
+**Pin transformers to 4.x series in requirements.txt**:
+
+```
+transformers>=4.44.0,<5.0.0
+```
+
+#### Verification
+
+```bash
+docker run <image> python -c "import transformers; print(transformers.__version__)"
+# Expected output: 4.44.x (NOT 5.x)
+```
+
+---
+
+### B.2 Missing HuggingFace Config Files
+
+#### Symptoms
+
+```
+OSError: Can't load feature extractor. Can't find 'preprocessor_config.json'
+FileNotFoundError: [Errno 2] No such file or directory: '...speech_tokenizer/preprocessor_config.json'
+```
+
+#### Root Cause
+
+HuggingFace's `snapshot_download()` doesn't always fetch all required files, particularly nested config files in subdirectories like `speech_tokenizer/`.
+
+#### Fix
+
+**Pre-download subdirectories in Dockerfile**:
+
+```dockerfile
+RUN python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download('Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice', \
+        allow_patterns=['speech_tokenizer/*'], \
+        cache_dir='/mnt/models/.cache')"
+```
+
+#### Verification
+
+```bash
+docker run <image> find /mnt/models/.cache -name 'preprocessor_config.json'
+# Expected: At least one file found
+```
+
+---
+
+### B.3 Docker Platform Architecture Mismatch
+
+#### Symptoms
+
+```
+ErrImagePull: image platform does not match (image is 'linux/arm64' but need 'linux/amd64')
+CrashLoopBackOff: Exec format error
+```
+
+#### Root Cause
+
+Docker images built on ARM machines (Apple Silicon) default to `linux/arm64`. SAP AI Core runs on `linux/amd64` x86-64 architecture.
+
+#### Fix
+
+**Build for x86-64 explicitly**:
+
+```bash
+docker build --platform linux/amd64 -t your-image:tag .
+```
+
+#### Verification
+
+```bash
+docker inspect your-image:tag | jq '.[0].Architecture'
+# Expected: "amd64"
+```
+
+---
+
+### B.4 API Method Name Mismatch
+
+#### Symptoms
+
+```
+AttributeError: 'Qwen3TTSModel' object has no attribute 'synthesize'
+AttributeError: 'Qwen3TTSModel' object has no attribute 'tts'
+```
+
+#### Root Cause
+
+The Qwen3-TTS model uses `generate_custom_voice()`, not `synthesize()` or `tts()`.
+
+#### Fix
+
+**Use the correct API method**:
+
+```python
+# WRONG
+wavs, sr = model.synthesize(text=text)
+
+# CORRECT
+wavs, sr = model.generate_custom_voice(
+    text=text,
+    speaker=speaker,
+    language=language,
+    instruct=instruct if instruct else None,
+)
+```
+
+---
+
+### B.5 CUDA Forking Subprocess Error
+
+#### Symptoms
+
+```
+RuntimeError: Cannot re-initialize CUDA in forked subprocess
+RuntimeError: CUDA memory is already allocated
+```
+
+#### Root Cause
+
+PyTorch's CUDA runtime cannot safely fork processes. gunicorn's `--preload` flag loads the app in the master process, then forks, corrupting CUDA state.
+
+#### Fix
+
+**Remove `--preload` from gunicorn command**:
+
+```dockerfile
+# WRONG
+CMD ["gunicorn", "--preload", ...]
+
+# CORRECT
+CMD ["gunicorn", "--bind", "0.0.0.0:9001", "--workers", "1", "--threads", "1", "--timeout", "300", "src.serve:app"]
+```
+
+---
+
+### B.6 FlashAttention GPU Compatibility
+
+#### Symptoms
+
+```
+NotImplementedError: FlashAttention only supports Ampere GPUs or newer
+RuntimeError: Compiler not found: CUDA Compiler Collection (NVCC) not found
+```
+
+#### Root Cause
+
+FlashAttention 2 requires NVIDIA Ampere architecture or newer (A100, A40, RTX 30 series, H100). SAP AI Core may use older GPUs like V100 or T4 that don't support it.
+
+#### Fix
+
+**Use SDPA (Scaled Dot-Product Attention) instead**:
+
+```python
+model = YourModel.from_pretrained(
+    model_path,
+    device_map=DEVICE,
+    torch_dtype=torch.bfloat16,
+    attn_implementation="sdpa",  # NOT "flash_attention_2"
+)
+```
+
+**Or implement automatic fallback**:
+
+```python
+def get_attention_impl():
+    if not torch.cuda.is_available():
+        return "eager"
+    
+    device_id = torch.cuda.current_device()
+    capability = torch.cuda.get_device_capability(device_id)
+    major_version = capability[0]
+    
+    if major_version >= 8:  # Ampere or newer
+        return "flash_attention_2"
+    else:
+        return "sdpa"  # V100, T4, P100
+```
+
+---
+
+### B.7 Health Returns 503 / Container Failing
+
+#### Symptoms
+
+- Health endpoint returns 503
+- Deployment status shows "RevisionMissing" or "ContainerCreating" for long time
+- Pod keeps restarting
+
+#### Root Cause
+
+Container is failing to start. Could be any of the errors above, or:
+- Out of memory
+- Missing environment variables
+- Model download failure
+- Permission issues
+
+#### Fix
+
+**Check deployment logs**:
+
+```bash
+curl -s "$AI_API_URL/v2/lm/deployments/<deploymentId>/logs" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "AI-Resource-Group: <resource-group>" | jq '.data.result.logs[-50:]'
+```
+
+Look for the specific error message, then find the matching section above.
+
+---
+
+### B.8 Deployment Status Commands
+
+```bash
+# Monitor deployment status
+curl -s "$AI_API_URL/v2/lm/deployments/<deploymentId>" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "AI-Resource-Group: <resource-group>" | jq ".status"
+
+# View deployment logs
+curl -s "$AI_API_URL/v2/lm/deployments/<deploymentId>/logs" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "AI-Resource-Group: <resource-group>" | jq '.data.result.logs[-20:]'
+
+# Test deployed endpoint
+curl -X POST "$DEPLOYMENT_URL/v1/models/tts:predict" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "AI-Resource-Group: <resource-group>" \
+    -H "Content-Type: application/json" \
+    -d '{"text": "Test speech.", "speaker": "Ryan", "format": "base64"}'
+```
+
+---
+
+### B.9 Local Testing Commands
+
+```bash
+# Build for correct platform
+docker build --platform linux/amd64 -t your-image:tag .
+
+# Run locally with GPU
+docker run --gpus all -p 9001:9001 your-image:tag
+
+# Test health endpoint
+curl -s http://localhost:9001/v1/models/tts:health | jq
+
+# Test inference
+curl -X POST http://localhost:9001/v1/models/tts:predict \
+    -H "Content-Type: application/json" \
+    -d '{"text": "Hello, this is a test.", "speaker": "Ryan"}'
+```
+
+---
+
+### B.10 Verification Commands Summary
+
+| Check | Command | Expected Result |
+|-------|---------|-----------------|
+| transformers version | `python -c "import transformers; print(transformers.__version__)"` | 4.44.x (NOT 5.x) |
+| Platform | `docker inspect <image> \| jq '.[0].Architecture'` | `"amd64"` |
+| Config files | `find /mnt/models/.cache -name 'preprocessor_config.json'` | At least one file |
+| Gunicorn command | `grep "CMD.*gunicorn" Dockerfile` | No `--preload` |
+
+---
+
+**Document Version**: 1.0  
+**Last Updated**: 2026-07-27  
+**Status**: Production-Ready
